@@ -25,6 +25,13 @@ public class SimulatorService : IDisposable
     private Timer? _simulationTimer;
     private bool _isRunning;
     
+    // Simulation parameters (constants for tweaking behavior)
+    private const double MaxAccelerationRate = 3.0; // km/h per update (max speed change)
+    private const double RpmPerKmh = 40.0; // Base RPM per km/h ratio
+    private const double FuelConsumptionRate = 0.001; // % per update when driving
+    private const double VoltageEmpty = 0.5; // Voltage at 0% fuel
+    private const double VoltageFull = 4.0; // Voltage at 100% fuel
+    
     // Simulation state
     private double _currentSpeed;
     private double _currentRpm;
@@ -100,7 +107,7 @@ public class SimulatorService : IDisposable
         // Simulate acceleration/deceleration with some randomness
         if (_random.NextDouble() < 0.05) // 5% chance to change speed pattern
         {
-            _speedChangeRate = (_random.NextDouble() - 0.5) * 3; // -1.5 to +1.5 km/h per update
+            _speedChangeRate = (_random.NextDouble() - 0.5) * MaxAccelerationRate; // -1.5 to +1.5 km/h per update
         }
 
         _currentSpeed += _speedChangeRate;
@@ -125,8 +132,8 @@ public class SimulatorService : IDisposable
         }
         else
         {
-            // Driving - roughly 40 RPM per km/h + gear shifts
-            var baseRpm = _currentSpeed * 40;
+            // Driving - roughly RpmPerKmh per km/h + gear shifts
+            var baseRpm = _currentSpeed * RpmPerKmh;
             var gearFactor = 1.0 - (_currentSpeed / 150.0) * 0.3; // Higher gears = lower RPM
             _currentRpm = baseRpm * gearFactor + _random.NextDouble() * 200;
             _currentRpm = Math.Min(6000, _currentRpm); // Redline at 6000
@@ -157,7 +164,7 @@ public class SimulatorService : IDisposable
         // Fuel decreases very slowly when driving
         if (_currentSpeed > 10)
         {
-            _currentFuelLevel -= 0.001; // Decreases 0.1% every 100 updates
+            _currentFuelLevel -= FuelConsumptionRate; // Decreases 0.1% every 100 updates
             _currentFuelLevel = Math.Max(0, _currentFuelLevel);
         }
     }
@@ -242,10 +249,8 @@ public class SimulatorService : IDisposable
 
     private void EmitFuelData()
     {
-        // Simulate voltage reading based on fuel level
-        var voltageEmpty = 0.5;
-        var voltageFull = 4.0;
-        var voltage = voltageEmpty + (_currentFuelLevel / 100.0) * (voltageFull - voltageEmpty);
+        // Simulate voltage reading based on fuel level (matches FuelSensorService configuration)
+        var voltage = VoltageEmpty + (_currentFuelLevel / 100.0) * (VoltageFull - VoltageEmpty);
 
         var data = new FuelData
         {
