@@ -86,8 +86,9 @@ public class ClusterHostedService : BackgroundService
                     await _hubContext.Clients.All.SendAsync("gpio-warnings", warnings, stoppingToken);
                 }
 
-                // Wait before next iteration
-                await Task.Delay(100, stoppingToken);
+                // Wait before next iteration (250ms = 4 times per second)
+                // This is sufficient for real-time monitoring without excessive CPU usage
+                await Task.Delay(250, stoppingToken);
             }
             catch (Exception ex)
             {

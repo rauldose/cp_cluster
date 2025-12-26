@@ -22,9 +22,21 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        // TODO: In production, restrict to specific origins
+        // For development, allow any origin
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+        else
+        {
+            // In production, specify allowed origins
+            policy.WithOrigins("http://localhost:5290", "http://raspberrypi.local")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
     });
 });
 
