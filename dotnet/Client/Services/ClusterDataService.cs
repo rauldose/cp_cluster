@@ -25,6 +25,9 @@ public class ClusterDataService : IAsyncDisposable
     public event Action<GPIOWarnings>? OnGPIOWarnings;
     public event Action<TemperatureData>? OnTemperatureData;
     public event Action<FuelData>? OnFuelData;
+    
+    // Public property to expose server URL
+    public string ServerUrl => new Uri(_hubUrl).GetLeftPart(UriPartial.Authority);
 
     public ClusterDataService(string hubUrl = "http://localhost:5086/clusterhub")
     {

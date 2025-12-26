@@ -39,6 +39,9 @@ public class FuelSensorService : IDisposable
     private readonly double _r1 = 100000; // 100kΩ
     private readonly double _r2 = 33000;  // 33kΩ
     
+    // Change threshold - minimum difference to trigger update (%)
+    private const double ChangeThreshold = 0.5;
+    
     // Calibration values (loaded from configuration)
     private double _voltageEmpty;
     private double _voltageFull;
@@ -116,8 +119,8 @@ public class FuelSensorService : IDisposable
 
             if (fuelLevel.HasValue)
             {
-                // Only notify if change is significant (> 0.5%)
-                if (!_lastFuelLevel.HasValue || Math.Abs(fuelLevel.Value - _lastFuelLevel.Value) > 0.5)
+                // Only notify if change is significant (> ChangeThreshold)
+                if (!_lastFuelLevel.HasValue || Math.Abs(fuelLevel.Value - _lastFuelLevel.Value) > ChangeThreshold)
                 {
                     _lastFuelLevel = fuelLevel;
                     NotifyFuelLevel(fuelLevel.Value, voltage);

@@ -18,6 +18,7 @@ namespace CyberPandinoCluster.Server.Services;
 
 /// <summary>
 /// Service for reading DS18B20 temperature sensor via 1-Wire protocol on Raspberry Pi
+/// Note: Uses source-generated regex which requires .NET 7.0 or later (using .NET 10.0)
 /// </summary>
 public partial class TemperatureSensorService : IDisposable
 {
