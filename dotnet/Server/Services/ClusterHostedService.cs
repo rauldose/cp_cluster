@@ -25,7 +25,9 @@ public class ClusterHostedService : BackgroundService
     private readonly GPIOService _gpioService;
     private readonly TemperatureSensorService _temperatureService;
     private readonly FuelSensorService _fuelService;
+    private readonly SimulatorService _simulatorService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IConfiguration _configuration;
 
     public ClusterHostedService(
         ILogger<ClusterHostedService> logger,
@@ -35,18 +37,20 @@ public class ClusterHostedService : BackgroundService
         _logger = logger;
         _hubContext = hubContext;
         _serviceProvider = serviceProvider;
+        _configuration = _serviceProvider.GetRequiredService<IConfiguration>();
 
         // Create services
         var obdLogger = _serviceProvider.GetRequiredService<ILogger<OBDCommunicationService>>();
         var gpioLogger = _serviceProvider.GetRequiredService<ILogger<GPIOService>>();
         var tempLogger = _serviceProvider.GetRequiredService<ILogger<TemperatureSensorService>>();
         var fuelLogger = _serviceProvider.GetRequiredService<ILogger<FuelSensorService>>();
-        var configuration = _serviceProvider.GetRequiredService<IConfiguration>();
+        var simulatorLogger = _serviceProvider.GetRequiredService<ILogger<SimulatorService>>();
         
         _obdService = new OBDCommunicationService(obdLogger);
         _gpioService = new GPIOService(gpioLogger);
         _temperatureService = new TemperatureSensorService(tempLogger);
-        _fuelService = new FuelSensorService(fuelLogger, configuration);
+        _fuelService = new FuelSensorService(fuelLogger, _configuration);
+        _simulatorService = new SimulatorService(simulatorLogger);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -55,15 +59,60 @@ public class ClusterHostedService : BackgroundService
 
         // Check if running on Raspberry Pi
         var isRaspberryPi = CheckRaspberryPi();
+        
+        // Check if simulator mode is enabled
+        var useSimulator = _configuration.GetValue<bool>("Simulator:Enabled", true);
+        
         if (!isRaspberryPi)
         {
-            _logger.LogWarning("Not running on Raspberry Pi. Service will run in limited mode.");
-            // Continue running but without hardware access
+            if (useSimulator)
+            {
+                _logger.LogInformation("🎮 Not running on Raspberry Pi. Starting in SIMULATOR mode.");
+                _logger.LogInformation("💡 Simulator will generate realistic vehicle data for testing.");
+                _logger.LogInformation("💡 To disable simulator, set 'Simulator:Enabled' to false in appsettings.json");
+                
+                // Setup simulator event handlers
+                _simulatorService.OnOBDDataSimulated += async (data) =>
+                {
+                    await _hubContext.Clients.All.SendAsync("obd-data", data, stoppingToken);
+                };
+                
+                _simulatorService.OnGPIOWarningsSimulated += async (data) =>
+                {
+                    await _hubContext.Clients.All.SendAsync("gpio-warnings", data, stoppingToken);
+                };
+                
+                _simulatorService.OnTemperatureSimulated += async (data) =>
+                {
+                    await _hubContext.Clients.All.SendAsync("external-temperature", data, stoppingToken);
+                };
+                
+                _simulatorService.OnFuelLevelSimulated += async (data) =>
+                {
+                    await _hubContext.Clients.All.SendAsync("fuel-level", data, stoppingToken);
+                };
+                
+                // Start simulator
+                _simulatorService.StartSimulation(250); // 4Hz update rate
+                
+                // Keep service running while simulator is active
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    await Task.Delay(1000, stoppingToken);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Not running on Raspberry Pi. Service will run in limited mode.");
+                _logger.LogInformation("No data will be generated. Set 'Simulator:Enabled' to true to enable simulator.");
+            }
         }
-
-        // Initialize services
-        if (isRaspberryPi)
+        else
         {
+            // Raspberry Pi mode - use real hardware
+            _logger.LogInformation("Running on Raspberry Pi. Using real hardware sensors.");
+            
+            // Initialize services
             var obdConnected = await _obdService.ConnectAsync();
             if (!obdConnected)
             {
@@ -107,14 +156,11 @@ public class ClusterHostedService : BackgroundService
             {
                 _logger.LogWarning("Fuel sensor not initialized. Continuing without fuel data.");
             }
-        }
-
-        // Main loop
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
+            
+            // Main loop for hardware
+            while (!stoppingToken.IsCancellationRequested)
             {
-                if (isRaspberryPi)
+                try
                 {
                     // Read OBD data
                     var obdData = await _obdService.ReadDataAsync();
@@ -123,20 +169,20 @@ public class ClusterHostedService : BackgroundService
                     // Read GPIO warnings
                     var warnings = _gpioService.ReadWarnings();
                     await _hubContext.Clients.All.SendAsync("gpio-warnings", warnings, stoppingToken);
-                }
 
-                // Wait before next iteration (250ms = 4 times per second)
-                // This is sufficient for real-time monitoring without excessive CPU usage
-                await Task.Delay(250, stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in cluster service loop");
-                await Task.Delay(1000, stoppingToken);
+                    // Wait before next iteration (250ms = 4 times per second)
+                    await Task.Delay(250, stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in cluster service loop");
+                    await Task.Delay(1000, stoppingToken);
+                }
             }
         }
 
         _logger.LogInformation("Cluster Hosted Service stopping...");
+        _simulatorService.Dispose();
         _obdService.Dispose();
         _gpioService.Dispose();
         _temperatureService.Dispose();

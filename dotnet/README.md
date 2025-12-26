@@ -27,8 +27,38 @@ CyberPandinoCluster.sln
 - **GPIO-connected optocouplers** (for vehicle warning lights)
 
 For development on non-Raspberry Pi systems:
-- The server will run in limited mode without hardware access
-- The client can be developed independently
+- The server will automatically start in **Simulator Mode**
+- The simulator generates realistic vehicle data for testing
+- The client can be fully tested without any hardware
+
+## 🎮 Simulator Mode
+
+When running on Windows, Linux, or macOS (non-Raspberry Pi), the server automatically starts a simulator that generates realistic vehicle data:
+
+**Simulated Data:**
+- 🚗 **Speed**: Dynamic acceleration/deceleration (0-120 km/h)
+- ⚙️ **RPM**: Correlated with speed, idle at 800, redline at 6000
+- 🌡️ **Coolant Temperature**: Gradual warm-up from 20°C to 90°C
+- 🌤️ **External Temperature**: Slowly varying ambient temperature
+- ⛽ **Fuel Level**: Gradually decreasing when driving
+- ⚠️ **Warning Lights**: Dynamic blinking turn signals, condition-based warnings
+
+**Features:**
+- Real-time updates at 4Hz (250ms intervals)
+- Realistic driving behavior simulation
+- Dynamic warning lights (turn signals blink, fuel reserve when low, etc.)
+- Temperature gradients (engine warms up, cools down)
+- Fuel consumption based on speed
+
+**Configuration:**
+The simulator is enabled by default. To disable it, edit `appsettings.json`:
+```json
+{
+  "Simulator": {
+    "Enabled": false
+  }
+}
+```
 
 ## 🚀 Getting Started
 
@@ -49,7 +79,8 @@ dotnet run
 
 The server will start on `http://localhost:5086` by default.
 
-**Note**: On non-Raspberry Pi systems, the server will run in limited mode without OBD-II and GPIO functionality.
+**On Windows/Linux/macOS**: Server starts in Simulator Mode with realistic vehicle data  
+**On Raspberry Pi**: Server uses real hardware sensors
 
 ### 3. Run the Client
 
@@ -59,6 +90,17 @@ dotnet run
 ```
 
 The client will be available at `http://localhost:5290` (or the port shown in the console).
+
+### 4. View the Dashboard
+
+Open your browser and navigate to `http://localhost:5290/dashboard`
+
+You'll see:
+- ✅ Real-time vehicle data (speed, RPM, temperatures)
+- ✅ Dynamic fuel gauge
+- ✅ Blinking warning lights
+- ✅ Connection status
+- ✅ All features working without hardware!
 
 ## 📡 SignalR Communication
 
