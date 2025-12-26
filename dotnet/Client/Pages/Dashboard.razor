@@ -1,0 +1,185 @@
+@page "/dashboard"
+@using CyberPandinoCluster.Shared.Models
+@using CyberPandinoCluster.Client.Services
+@implements IDisposable
+@inject ClusterDataService ClusterService
+
+<PageTitle>Dashboard - Cyberpandino Cluster</PageTitle>
+
+<div class="dashboard-container">
+    <h1 class="dashboard-title">🚗 Cyberpandino Cluster</h1>
+    
+    @if (!isConnected)
+    {
+        <div class="connection-status disconnected">
+            <span class="status-icon">⚠️</span>
+            <span>Connecting to server...</span>
+        </div>
+    }
+    else
+    {
+        <div class="connection-status connected">
+            <span class="status-icon">✅</span>
+            <span>Connected</span>
+        </div>
+    }
+
+    <div class="dashboard-grid">
+        <!-- OBD Data Section -->
+        <div class="card obd-section">
+            <h2>Vehicle Data</h2>
+            <div class="data-grid">
+                <div class="gauge-container">
+                    <div class="gauge-label">Speed</div>
+                    <div class="gauge-value">@(obdData?.Speed ?? 0)</div>
+                    <div class="gauge-unit">km/h</div>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge-label">RPM</div>
+                    <div class="gauge-value">@(obdData?.Rpm ?? 0)</div>
+                    <div class="gauge-unit">rpm</div>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge-label">Coolant Temp</div>
+                    <div class="gauge-value">@(obdData?.CoolantTemperature.ToString("F1") ?? "0.0")</div>
+                    <div class="gauge-unit">°C</div>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge-label">External Temp</div>
+                    <div class="gauge-value">@(temperatureData?.Temperature.ToString("F1") ?? "--")</div>
+                    <div class="gauge-unit">°C</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fuel Level -->
+        <div class="card fuel-section">
+            <h2>Fuel Level</h2>
+            <div class="fuel-gauge">
+                <div class="fuel-level" style="width: @(fuelData?.Level ?? 0)%"></div>
+                <div class="fuel-text">@((fuelData?.Level ?? 0).ToString("F1"))%</div>
+            </div>
+            @if (fuelData != null)
+            {
+                <div class="fuel-voltage">Voltage: @fuelData.Voltage.ToString("F2")V</div>
+            }
+        </div>
+
+        <!-- Warning Lights -->
+        <div class="card warnings-section">
+            <h2>Warning Lights</h2>
+            <div class="warnings-grid">
+                <div class="warning-item @(warnings?.TurnSignal == true ? "active" : "")">
+                    <span class="warning-icon">🔄</span>
+                    <span>Turn Signal</span>
+                </div>
+                <div class="warning-item @(warnings?.Alternator == true ? "active" : "")">
+                    <span class="warning-icon">🔋</span>
+                    <span>Alternator</span>
+                </div>
+                <div class="warning-item @(warnings?.OilPressure == true ? "active" : "")">
+                    <span class="warning-icon">🛢️</span>
+                    <span>Oil Pressure</span>
+                </div>
+                <div class="warning-item @(warnings?.BrakeSystem == true ? "active" : "")">
+                    <span class="warning-icon">🛑</span>
+                    <span>Brake System</span>
+                </div>
+                <div class="warning-item @(warnings?.HighBeam == true ? "active" : "")">
+                    <span class="warning-icon">💡</span>
+                    <span>High Beam</span>
+                </div>
+                <div class="warning-item @(warnings?.LowBeam == true ? "active" : "")">
+                    <span class="warning-icon">🔦</span>
+                    <span>Low Beam</span>
+                </div>
+                <div class="warning-item @(warnings?.FogLight == true ? "active" : "")">
+                    <span class="warning-icon">🌫️</span>
+                    <span>Fog Light</span>
+                </div>
+                <div class="warning-item @(warnings?.FuelReserve == true ? "active" : "")">
+                    <span class="warning-icon">⛽</span>
+                    <span>Fuel Reserve</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="card info-section">
+            <h2>System Info</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Last Update:</span>
+                    <span class="info-value">@lastUpdate</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Server:</span>
+                    <span class="info-value">@serverUrl</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isConnected = false;
+    private OBDData? obdData;
+    private GPIOWarnings? warnings;
+    private TemperatureData? temperatureData;
+    private FuelData? fuelData;
+    private string lastUpdate = "--";
+    private string serverUrl => ClusterService?.ServerUrl ?? "http://localhost:5086";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to data events
+        ClusterService.OnOBDData += HandleOBDData;
+        ClusterService.OnGPIOWarnings += HandleWarnings;
+        ClusterService.OnTemperatureData += HandleTemperature;
+        ClusterService.OnFuelData += HandleFuel;
+
+        try
+        {
+            await ClusterService.StartAsync();
+            isConnected = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error connecting: {ex.Message}");
+            isConnected = false;
+        }
+    }
+
+    private void HandleOBDData(OBDData data)
+    {
+        obdData = data;
+        lastUpdate = DateTime.Now.ToString("HH:mm:ss");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleWarnings(GPIOWarnings data)
+    {
+        warnings = data;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleTemperature(TemperatureData data)
+    {
+        temperatureData = data;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleFuel(FuelData data)
+    {
+        fuelData = data;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ClusterService.OnOBDData -= HandleOBDData;
+        ClusterService.OnGPIOWarnings -= HandleWarnings;
+        ClusterService.OnTemperatureData -= HandleTemperature;
+        ClusterService.OnFuelData -= HandleFuel;
+    }
+}

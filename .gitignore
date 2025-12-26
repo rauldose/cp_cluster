@@ -59,3 +59,16 @@ bun.lockb
 
 # PM2
 .pm2/
+
+# .NET
+dotnet/**/bin/
+dotnet/**/obj/
+dotnet/**/.vs/
+dotnet/**/*.user
+dotnet/**/*.suo
+dotnet/**/*.userosscache
+dotnet/**/*.sln.docstates
+dotnet/**/project.lock.json
+dotnet/**/project.fragment.lock.json
+dotnet/**/artifacts/
+

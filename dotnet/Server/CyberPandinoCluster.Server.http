@@ -1,0 +1,6 @@
+@CyberPandinoCluster.Server_HostAddress = http://localhost:5086
+
+GET {{CyberPandinoCluster.Server_HostAddress}}/health
+Accept: application/json
+
+###
