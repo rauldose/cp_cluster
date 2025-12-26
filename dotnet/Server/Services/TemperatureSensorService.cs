@@ -12,13 +12,14 @@
  */
 
 using CyberPandinoCluster.Shared.Models;
+using System.Text.RegularExpressions;
 
 namespace CyberPandinoCluster.Server.Services;
 
 /// <summary>
 /// Service for reading DS18B20 temperature sensor via 1-Wire protocol on Raspberry Pi
 /// </summary>
-public class TemperatureSensorService : IDisposable
+public partial class TemperatureSensorService : IDisposable
 {
     private readonly ILogger<TemperatureSensorService> _logger;
     private readonly string _basePath = "/sys/bus/w1/devices";
@@ -26,6 +27,10 @@ public class TemperatureSensorService : IDisposable
     private bool _isInitialized;
     private Timer? _readTimer;
     private double? _lastTemperature;
+
+    // Use source-generated regex for better performance
+    [GeneratedRegex(@"t=(\d+)")]
+    private static partial Regex TemperatureRegex();
 
     public event Action<TemperatureData>? OnTemperatureChanged;
 
@@ -127,7 +132,7 @@ public class TemperatureSensorService : IDisposable
                 return null;
 
             // Extract temperature from second line (format: "t=xxxxx")
-            var tempMatch = System.Text.RegularExpressions.Regex.Match(lines[1], @"t=(\d+)");
+            var tempMatch = TemperatureRegex().Match(lines[1]);
             if (tempMatch.Success && int.TryParse(tempMatch.Groups[1].Value, out int tempRaw))
             {
                 // Value is in thousandths of a degree

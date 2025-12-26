@@ -41,11 +41,12 @@ public class ClusterHostedService : BackgroundService
         var gpioLogger = _serviceProvider.GetRequiredService<ILogger<GPIOService>>();
         var tempLogger = _serviceProvider.GetRequiredService<ILogger<TemperatureSensorService>>();
         var fuelLogger = _serviceProvider.GetRequiredService<ILogger<FuelSensorService>>();
+        var configuration = _serviceProvider.GetRequiredService<IConfiguration>();
         
         _obdService = new OBDCommunicationService(obdLogger);
         _gpioService = new GPIOService(gpioLogger);
         _temperatureService = new TemperatureSensorService(tempLogger);
-        _fuelService = new FuelSensorService(fuelLogger);
+        _fuelService = new FuelSensorService(fuelLogger, configuration);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

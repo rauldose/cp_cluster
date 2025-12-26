@@ -24,6 +24,7 @@ namespace CyberPandinoCluster.Server.Services;
 public class FuelSensorService : IDisposable
 {
     private readonly ILogger<FuelSensorService> _logger;
+    private readonly IConfiguration _configuration;
     private Ads1115? _adc;
     private bool _isInitialized;
     private Timer? _readTimer;
@@ -38,15 +39,20 @@ public class FuelSensorService : IDisposable
     private readonly double _r1 = 100000; // 100kΩ
     private readonly double _r2 = 33000;  // 33kΩ
     
-    // Calibration values
-    private double _voltageEmpty = 0.5; // Voltage when tank is empty (V)
-    private double _voltageFull = 4.0;  // Voltage when tank is full (V)
+    // Calibration values (loaded from configuration)
+    private double _voltageEmpty;
+    private double _voltageFull;
 
     public event Action<FuelData>? OnFuelLevelChanged;
 
-    public FuelSensorService(ILogger<FuelSensorService> logger)
+    public FuelSensorService(ILogger<FuelSensorService> logger, IConfiguration configuration)
     {
         _logger = logger;
+        _configuration = configuration;
+        
+        // Load calibration from configuration
+        _voltageEmpty = _configuration.GetValue<double>("FuelSensor:VoltageEmpty", 0.5);
+        _voltageFull = _configuration.GetValue<double>("FuelSensor:VoltageFull", 4.0);
     }
 
     public bool Initialize()
@@ -56,7 +62,7 @@ public class FuelSensorService : IDisposable
             var settings = new I2cConnectionSettings(_i2cBusId, _i2cAddress);
             var i2cDevice = I2cDevice.Create(settings);
             
-            _adc = new Ads1115(i2cDevice, InputMultiplexer.AIN0, MeasuringRange.FS4096);
+            _adc = new Ads1115(i2cDevice, _channel, MeasuringRange.FS4096);
             
             _isInitialized = true;
             _logger.LogInformation("ADS1115 fuel sensor initialized successfully on I2C bus {Bus} address 0x{Address:X2}", 

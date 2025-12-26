@@ -128,7 +128,11 @@
     private TemperatureData? temperatureData;
     private FuelData? fuelData;
     private string lastUpdate = "--";
-    private string serverUrl = "http://localhost:5086";
+    private string serverUrl => ClusterService != null ? 
+        new Uri(ClusterService.GetType().GetField("_hubUrl", 
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+            .GetValue(ClusterService)?.ToString() ?? "http://localhost:5086").GetLeftPart(UriPartial.Authority) : 
+        "http://localhost:5086";
 
     protected override async Task OnInitializedAsync()
     {
