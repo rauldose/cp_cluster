@@ -26,7 +26,7 @@ public class ClusterDataService : IAsyncDisposable
     public event Action<TemperatureData>? OnTemperatureData;
     public event Action<FuelData>? OnFuelData;
 
-    public ClusterDataService(string hubUrl = "http://localhost:5000/clusterhub")
+    public ClusterDataService(string hubUrl = "http://localhost:5086/clusterhub")
     {
         _hubUrl = hubUrl;
     }

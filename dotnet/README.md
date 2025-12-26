@@ -47,7 +47,7 @@ cd dotnet/Server
 dotnet run
 ```
 
-The server will start on `http://localhost:5000` by default.
+The server will start on `http://localhost:5086` by default.
 
 **Note**: On non-Raspberry Pi systems, the server will run in limited mode without OBD-II and GPIO functionality.
 
@@ -58,7 +58,7 @@ cd dotnet/Client
 dotnet run
 ```
 
-The client will be available at `http://localhost:5001` (or the port shown in the console).
+The client will be available at `http://localhost:5290` (or the port shown in the console).
 
 ## 📡 SignalR Communication
 

@@ -73,7 +73,7 @@ cd dotnet/Client
 dotnet run
 ```
 
-The server runs on `http://localhost:5000` and the client on `http://localhost:5001`.
+The server runs on `http://localhost:5086` and the client on `http://localhost:5290`.
 
 ## 🏗️ Architecture
 
@@ -217,7 +217,9 @@ ENTRYPOINT ["dotnet", "CyberPandinoCluster.Server.dll"]
 
 You can run both Node.js and .NET versions simultaneously on different ports:
 - Node.js server: Port 3001
-- .NET server: Port 5000
+- .NET server: Port 5086
+- Node.js client: Port 5173
+- .NET client: Port 5290
 
 This allows for comparison and gradual migration.
 
