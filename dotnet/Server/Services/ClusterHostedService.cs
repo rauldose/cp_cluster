@@ -23,6 +23,8 @@ public class ClusterHostedService : BackgroundService
     private readonly IHubContext<ClusterHub> _hubContext;
     private readonly OBDCommunicationService _obdService;
     private readonly GPIOService _gpioService;
+    private readonly TemperatureSensorService _temperatureService;
+    private readonly FuelSensorService _fuelService;
     private readonly IServiceProvider _serviceProvider;
 
     public ClusterHostedService(
@@ -37,9 +39,13 @@ public class ClusterHostedService : BackgroundService
         // Create services
         var obdLogger = _serviceProvider.GetRequiredService<ILogger<OBDCommunicationService>>();
         var gpioLogger = _serviceProvider.GetRequiredService<ILogger<GPIOService>>();
+        var tempLogger = _serviceProvider.GetRequiredService<ILogger<TemperatureSensorService>>();
+        var fuelLogger = _serviceProvider.GetRequiredService<ILogger<FuelSensorService>>();
         
         _obdService = new OBDCommunicationService(obdLogger);
         _gpioService = new GPIOService(gpioLogger);
+        _temperatureService = new TemperatureSensorService(tempLogger);
+        _fuelService = new FuelSensorService(fuelLogger);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -67,6 +73,38 @@ public class ClusterHostedService : BackgroundService
             if (!gpioInitialized)
             {
                 _logger.LogWarning("GPIO not initialized. Continuing without GPIO data.");
+            }
+
+            // Initialize temperature sensor (DS18B20)
+            var tempInitialized = _temperatureService.Initialize();
+            if (tempInitialized)
+            {
+                // Setup event handler
+                _temperatureService.OnTemperatureChanged += async (data) =>
+                {
+                    await _hubContext.Clients.All.SendAsync("external-temperature", data, stoppingToken);
+                };
+                _temperatureService.StartReading(5000); // Read every 5 seconds
+            }
+            else
+            {
+                _logger.LogWarning("Temperature sensor not initialized. Continuing without temperature data.");
+            }
+
+            // Initialize fuel sensor (ADS1115)
+            var fuelInitialized = _fuelService.Initialize();
+            if (fuelInitialized)
+            {
+                // Setup event handler
+                _fuelService.OnFuelLevelChanged += async (data) =>
+                {
+                    await _hubContext.Clients.All.SendAsync("fuel-level", data, stoppingToken);
+                };
+                _fuelService.StartReading(500); // Read every 500ms
+            }
+            else
+            {
+                _logger.LogWarning("Fuel sensor not initialized. Continuing without fuel data.");
             }
         }
 
@@ -100,6 +138,8 @@ public class ClusterHostedService : BackgroundService
         _logger.LogInformation("Cluster Hosted Service stopping...");
         _obdService.Dispose();
         _gpioService.Dispose();
+        _temperatureService.Dispose();
+        _fuelService.Dispose();
     }
 
     private bool CheckRaspberryPi()
