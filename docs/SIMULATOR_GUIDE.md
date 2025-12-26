@@ -10,7 +10,7 @@ The .NET port includes a built-in simulator that generates realistic vehicle dat
 - **Speed (0-120 km/h)**: Realistic acceleration and deceleration with momentum
 - **RPM (800-6000)**: Correlated with speed, includes idle and gear shifts
 - **Engine Temperature**: Gradual warm-up from 20°C to operating temp (90°C)
-- **Fuel Consumption**: Decreases slowly when driving (0.1% per 100 updates at speed)
+- **Fuel Consumption**: Decreases by 0.1% per update (250ms) when driving at speed > 10 km/h
 
 ### Environmental Data
 - **External Temperature**: Slowly varying ambient temperature (5-35°C)
@@ -160,8 +160,8 @@ To modify simulation behavior, edit `dotnet/Server/Services/SimulatorService.cs`
 
 ### Change Speed Dynamics
 ```csharp
-// Line ~70: Adjust acceleration rate
-_speedChangeRate = (_random.NextDouble() - 0.5) * 5; // Faster acceleration
+// Line ~23: Adjust maximum acceleration rate
+private const double MaxAccelerationRate = 6.0; // Faster acceleration (was 3.0)
 ```
 
 ### Change Update Frequency

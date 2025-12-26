@@ -107,7 +107,8 @@ public class SimulatorService : IDisposable
         // Simulate acceleration/deceleration with some randomness
         if (_random.NextDouble() < 0.05) // 5% chance to change speed pattern
         {
-            _speedChangeRate = (_random.NextDouble() - 0.5) * MaxAccelerationRate; // -1.5 to +1.5 km/h per update
+            // Generate acceleration rate between -MaxAccelerationRate/2 and +MaxAccelerationRate/2
+            _speedChangeRate = (_random.NextDouble() - 0.5) * MaxAccelerationRate;
         }
 
         _currentSpeed += _speedChangeRate;
@@ -161,10 +162,10 @@ public class SimulatorService : IDisposable
 
     private void SimulateFuelLevel()
     {
-        // Fuel decreases very slowly when driving
+        // Fuel decreases slowly when driving (FuelConsumptionRate per update)
         if (_currentSpeed > 10)
         {
-            _currentFuelLevel -= FuelConsumptionRate; // Decreases 0.1% every 100 updates
+            _currentFuelLevel -= FuelConsumptionRate;
             _currentFuelLevel = Math.Max(0, _currentFuelLevel);
         }
     }
